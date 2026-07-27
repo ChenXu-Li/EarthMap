@@ -16,6 +16,9 @@
     --gps: #5ec8ff;
     --starlink: #f6c75e;
     --beidou: #69e49a;
+    --qianfan: #8f6bff;
+    --apt: #ff7bba;
+    --jilin: #56d985;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,6 +40,7 @@
     width: 100vw;
     height: 100dvh;
     overflow: hidden;
+        satelliteCount: 35,
     background: var(--bg);
   }
 
@@ -45,6 +49,20 @@
     inset: 0;
     display: block;
     width: 100%;
+      gps: {
+        name: 'GPS',
+        description: 'GPS 是美国建设的中轨导航星座，典型星座由多条倾斜轨道组成，为地面、航空和海上设备提供连续定位与授时。',
+        altitudeLabel: '约 20,200 km',
+        inclinationLabel: '55°',
+        color: 0x5ec8ff,
+        satelliteCount: 31,
+        radius: 1.72,
+        planes: 6,
+        perPlane: 4,
+        inclination: 55,
+        speed: 0.18,
+        phase: 0.2
+      },
     height: 100%;
     touch-action: none;
   }
@@ -143,6 +161,9 @@
   #info-panel[data-current="gps"] .dot { background: var(--gps); color: var(--gps); box-shadow: 0 0 12px var(--gps); }
   #info-panel[data-current="starlink"] .dot { background: var(--starlink); color: var(--starlink); box-shadow: 0 0 12px var(--starlink); }
   #info-panel[data-current="beidou"] .dot { background: var(--beidou); color: var(--beidou); box-shadow: 0 0 12px var(--beidou); }
+  #info-panel[data-current="qianfan"] .dot { background: var(--qianfan); color: var(--qianfan); box-shadow: 0 0 12px var(--qianfan); }
+  #info-panel[data-current="apt"] .dot { background: var(--apt); color: var(--apt); box-shadow: 0 0 12px var(--apt); }
+  #info-panel[data-current="jilin"] .dot { background: var(--jilin); color: var(--jilin); box-shadow: 0 0 12px var(--jilin); }
   .collapse-btn {
     width: 28px;
     height: 28px;
@@ -194,13 +215,14 @@
     white-space: nowrap;
   }
   .info-tabs {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, auto);
     gap: 7px;
     margin-top: 10px;
   }
   .info-tab {
-    flex: 1;
-    min-height: 28px;
+    min-height: 34px;
     border: 1px solid rgba(120, 170, 255, 0.18);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
@@ -290,6 +312,9 @@
   .legend-dot.gps { background: var(--gps); color: var(--gps); }
   .legend-dot.starlink { background: var(--starlink); color: var(--starlink); }
   .legend-dot.beidou { background: var(--beidou); color: var(--beidou); }
+  .legend-dot.qianfan { background: var(--qianfan); color: var(--qianfan); }
+  .legend-dot.apt { background: var(--apt); color: var(--apt); }
+  .legend-dot.jilin { background: var(--jilin); color: var(--jilin); }
   .toggle-btn .switch {
     width: 26px;
     height: 14px;
@@ -361,13 +386,16 @@
       <div class="info-meta">
         <div><span>轨道高度</span><strong id="info-altitude">--</strong></div>
         <div><span>倾角</span><strong id="info-inclination">--</strong></div>
-        <div><span>本页数量</span><strong id="info-count">--</strong></div>
+        <div><span>在轨数量</span><strong id="info-count">--</strong></div>
       </div>
     </div>
     <div class="info-tabs" aria-label="切换星座介绍">
       <button class="info-tab active" type="button" data-info="gps">GPS</button>
       <button class="info-tab" type="button" data-info="starlink">Starlink</button>
       <button class="info-tab" type="button" data-info="beidou">北斗</button>
+      <button class="info-tab" type="button" data-info="qianfan">千帆</button>
+      <button class="info-tab" type="button" data-info="apt">亚太</button>
+      <button class="info-tab" type="button" data-info="jilin">吉林一号</button>
     </div>
   </div>
 
@@ -382,6 +410,9 @@
     <button class="toggle-btn on" data-constellation="gps"><span class="label"><span class="legend-dot gps"></span>GPS</span><span class="switch"></span></button>
     <button class="toggle-btn on" data-constellation="starlink"><span class="label"><span class="legend-dot starlink"></span>Starlink</span><span class="switch"></span></button>
     <button class="toggle-btn on" data-constellation="beidou"><span class="label"><span class="legend-dot beidou"></span>北斗</span><span class="switch"></span></button>
+    <button class="toggle-btn on" data-constellation="qianfan"><span class="label"><span class="legend-dot qianfan"></span>千帆星座</span><span class="switch"></span></button>
+    <button class="toggle-btn on" data-constellation="apt"><span class="label"><span class="legend-dot apt"></span>亚太卫星</span><span class="switch"></span></button>
+    <button class="toggle-btn on" data-constellation="jilin"><span class="label"><span class="legend-dot jilin"></span>吉林一号</span><span class="switch"></span></button>
   </div>
 
   <div id="stat">
@@ -462,14 +493,77 @@
     controls.dampingFactor = 0.06;
     controls.rotateSpeed = 0.6;
     controls.zoomSpeed = 0.8;
-    controls.panSpeed = 0.6;
-    controls.enablePan = true;
+    controls.enablePan = false;
+    controls.enableRotate = false;
     controls.minDistance = 1.6;
     controls.maxDistance = 8;
     controls.touches = {
       ONE: THREE.TOUCH.ROTATE,
       TWO: THREE.TOUCH.DOLLY_PAN
     };
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    const rotationControl = {
+      active: false,
+      pointerId: null,
+      lastX: 0,
+      lastY: 0,
+      sensitivity: 0.0045
+    };
+
+    function handleDragRotation(dx, dy) {
+      if (dx === 0 && dy === 0) return;
+      const yaw = dx * rotationControl.sensitivity;
+      const pitch = dy * rotationControl.sensitivity;
+
+      const worldUp = new THREE.Vector3(0, 1, 0);
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+      const cameraRight = new THREE.Vector3();
+      cameraRight.crossVectors(cameraDirection, camera.up).normalize();
+
+      const deltaQuat = new THREE.Quaternion();
+      const yawQuat = new THREE.Quaternion().setFromAxisAngle(worldUp, yaw);
+      const pitchQuat = new THREE.Quaternion().setFromAxisAngle(cameraRight, pitch);
+      deltaQuat.multiplyQuaternions(yawQuat, pitchQuat);
+
+      earth.applyQuaternion(deltaQuat);
+      clouds.applyQuaternion(deltaQuat);
+      atmosphere.applyQuaternion(deltaQuat);
+      satelliteRoot.applyQuaternion(deltaQuat);
+    }
+
+    canvas.addEventListener('pointerdown', (event) => {
+      if (rotationControl.active || (event.pointerType === 'mouse' && event.button !== 0)) return;
+      rotationControl.active = true;
+      rotationControl.pointerId = event.pointerId;
+      rotationControl.lastX = event.clientX;
+      rotationControl.lastY = event.clientY;
+      canvas.setPointerCapture(event.pointerId);
+      userInteracting = true;
+    });
+
+    canvas.addEventListener('pointermove', (event) => {
+      if (!rotationControl.active || event.pointerId !== rotationControl.pointerId) return;
+      const dx = event.clientX - rotationControl.lastX;
+      const dy = event.clientY - rotationControl.lastY;
+      handleDragRotation(dx, dy);
+      rotationControl.lastX = event.clientX;
+      rotationControl.lastY = event.clientY;
+    });
+
+    function endDrag(event) {
+      if (!rotationControl.active || event.pointerId !== rotationControl.pointerId) return;
+      rotationControl.active = false;
+      rotationControl.pointerId = null;
+      canvas.releasePointerCapture(event.pointerId);
+      userInteracting = false;
+    }
+
+    canvas.addEventListener('pointerup', endDrag);
+    canvas.addEventListener('pointercancel', endDrag);
+    canvas.addEventListener('pointerleave', endDrag);
 
     const sun = new THREE.DirectionalLight(0xfff8ee, 4.0);
     sun.position.set(5, 1.5, 3);
@@ -611,6 +705,7 @@
         altitudeLabel: '约 20,200 km',
         inclinationLabel: '55°',
         color: 0x5ec8ff,
+        satelliteCount: 31,
         radius: 1.72,
         planes: 6,
         perPlane: 4,
@@ -624,6 +719,7 @@
         altitudeLabel: '约 550 km',
         inclinationLabel: '53°',
         color: 0xf6c75e,
+        satelliteCount: 10413,
         radius: 1.18,
         planes: 12,
         perPlane: 8,
@@ -637,6 +733,7 @@
         altitudeLabel: '约 21,500 km',
         inclinationLabel: '55° / GEO',
         color: 0x69e49a,
+        satelliteCount: 35,
         radius: 1.95,
         planes: 5,
         perPlane: 6,
@@ -644,6 +741,49 @@
         speed: 0.14,
         phase: 2.4,
         geostationary: 5
+      },
+      qianfan: {
+        name: '千帆星座',
+        description: '千帆星座是中国商用遥感与通信的低轨星座，轨道更倾斜，适合展现高覆盖、高重访率的现代遥感部署。',
+        altitudeLabel: '约 520 km',
+        inclinationLabel: '97°',
+        color: 0x8f6bff,
+        satelliteCount: 126,
+        radius: 1.22,
+        planes: 8,
+        perPlane: 3,
+        inclination: 97,
+        speed: 0.38,
+        phase: 0.9
+      },
+      apt: {
+        name: '亚太卫星',
+        description: '亚太卫星代表的卫星星座以地球同步通信卫星为主，贴近赤道的长时间驻留轨道适合提供稳定的亚太区域广播与数据服务。',
+        altitudeLabel: '约 35,786 km',
+        inclinationLabel: '0° GEO',
+        color: 0xff7bba,
+        satelliteCount: 6,
+        radius: 1.62,
+        planes: 1,
+        perPlane: 0,
+        inclination: 0,
+        speed: 0.03,
+        phase: 0.6,
+        geostationary: 5
+      },
+      jilin: {
+        name: '吉林一号',
+        description: '吉林一号是中国高分辨率遥感星座，采用太阳同步低轨道，常用于农业、城市与环境监测数据采集。',
+        altitudeLabel: '约 528 km',
+        inclinationLabel: '97.4°',
+        color: 0x56d985,
+        satelliteCount: 131,
+        radius: 1.24,
+        planes: 6,
+        perPlane: 3,
+        inclination: 97.4,
+        speed: 0.39,
+        phase: 1.4
       }
     };
 
@@ -745,7 +885,7 @@
       infoDesc.textContent = config.description;
       infoAltitude.textContent = config.altitudeLabel;
       infoInclination.textContent = config.inclinationLabel;
-      infoCount.textContent = `${constellation.satellites.length} 颗`;
+      infoCount.textContent = config.satelliteCount !== undefined ? `${config.satelliteCount.toLocaleString()} 颗` : '--';
       document.querySelectorAll('.info-tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.info === key);
       });
@@ -757,27 +897,29 @@
         .map(([key]) => key);
     }
 
-    function syncInfoPanel() {
-      const visibleKeys = getVisibleConstellationKeys();
-      if (visibleKeys.length > 1) {
-        infoPanel.classList.add('hidden');
-        return;
-      }
+    function updateConstellationButtonStates() {
+      document.querySelectorAll('.toggle-btn[data-constellation]').forEach(btn => {
+        const key = btn.dataset.constellation;
+        btn.classList.toggle('on', constellations[key].visible);
+      });
+    }
 
+    function syncInfoPanel() {
       infoPanel.classList.remove('hidden');
-      if (visibleKeys.length === 1) {
-        setInfoCard(visibleKeys[0]);
-        infoCollapsed = false;
-        infoPanel.classList.remove('collapsed');
-        infoCollapse.textContent = '−';
-        infoCollapse.setAttribute('aria-label', '收起信息卡');
-      } else {
-        setInfoCard(currentInfoKey);
-        infoCollapsed = false;
-        infoPanel.classList.remove('collapsed');
-        infoCollapse.textContent = '−';
-        infoCollapse.setAttribute('aria-label', '收起信息卡');
-      }
+      infoCollapsed = false;
+      infoPanel.classList.remove('collapsed');
+      infoCollapse.textContent = '−';
+      infoCollapse.setAttribute('aria-label', '收起信息卡');
+    }
+
+    function showSingleConstellation(key) {
+      Object.entries(constellations).forEach(([constKey, item]) => {
+        const isSelected = constKey === key;
+        item.visible = isSelected;
+        item.group.visible = isSelected;
+      });
+      updateConstellationButtonStates();
+      updateSatelliteCount();
     }
 
     function updateSatellitePositions(dt) {
@@ -792,9 +934,9 @@
     }
 
     function updateSatelliteCount() {
-      const total = Object.values(constellations)
-        .filter((item) => item.visible)
-        .reduce((sum, item) => sum + item.satellites.length, 0);
+      const total = Object.entries(constellations)
+        .filter(([, item]) => item.visible)
+        .reduce((sum, [key]) => sum + constellationConfigs[key].satelliteCount, 0);
       document.getElementById('sat-count').textContent = total.toString();
     }
 
@@ -828,13 +970,14 @@
         item.group.visible = item.visible;
         btn.classList.toggle('on', item.visible);
         updateSatelliteCount();
-        syncInfoPanel();
       });
     });
 
     document.querySelectorAll('.info-tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        setInfoCard(tab.dataset.info);
+        const key = tab.dataset.info;
+        setInfoCard(key);
+        showSingleConstellation(key);
       });
     });
 
