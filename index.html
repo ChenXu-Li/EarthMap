@@ -31,14 +31,25 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  #scene {
+  #app {
     position: fixed;
     inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  #scene {
+    position: absolute;
+    inset: 0;
     display: block;
+    width: 100%;
+    height: 100%;
   }
 
   #loader {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 50;
     display: flex;
@@ -68,7 +79,7 @@
   }
 
   .panel {
-    position: fixed;
+    position: absolute;
     z-index: 20;
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -82,7 +93,7 @@
     top: 24px;
     left: 24px;
     padding: 18px 22px;
-    width: min(360px, calc(100vw - 228px));
+    width: min(360px, calc(100% - 228px));
     transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s ease;
   }
   #info-panel.hidden {
@@ -308,7 +319,7 @@
   .toggle-btn.on .switch::after { transform: translateX(12px); background: #fff; }
 
   #stat {
-    position: fixed;
+    position: absolute;
     bottom: 24px;
     right: 24px;
     z-index: 20;
@@ -321,7 +332,7 @@
   #stat .accent { color: var(--accent); }
 
   @media (max-width: 640px) {
-    #info-panel { width: calc(100vw - 184px); padding: 14px 16px; }
+    #info-panel { width: calc(100% - 184px); padding: 14px 16px; }
     .info-head h1 { font-size: 17px; }
     .info-meta { grid-template-columns: 1fr; }
     .info-tabs { flex-direction: column; }
@@ -333,6 +344,7 @@
 </style>
 </head>
 <body>
+<div id="app">
   <canvas id="scene"></canvas>
 
   <div id="loader">
@@ -385,6 +397,8 @@
     <div>实时渲染 · WebGL</div>
   </div>
 
+</div>
+
   <script type="importmap">
   {
     "imports": {
@@ -398,10 +412,48 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+    const app = document.getElementById('app');
     const canvas = document.getElementById('scene');
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const isTouchDevice = () => ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const getLandscapeSize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      return isTouchDevice() && h > w
+        ? { width: h, height: w, rotated: true }
+        : { width: w, height: h, rotated: false };
+    };
+
+    function applyLandscapeLayout() {
+      const size = getLandscapeSize();
+      viewport.width = size.width;
+      viewport.height = size.height;
+
+      if (size.rotated) {
+        app.style.position = 'fixed';
+        app.style.top = '0';
+        app.style.left = window.innerWidth + 'px';
+        app.style.width = size.width + 'px';
+        app.style.height = size.height + 'px';
+        app.style.transformOrigin = 'top left';
+        app.style.transform = 'rotate(90deg)';
+      } else {
+        app.style.position = '';
+        app.style.top = '';
+        app.style.left = '';
+        app.style.width = '';
+        app.style.height = '';
+        app.style.transformOrigin = '';
+        app.style.transform = '';
+      }
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    }
+
+    applyLandscapeLayout();
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(viewport.width, viewport.height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.6;
@@ -409,7 +461,7 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x05060a);
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(45, viewport.width / viewport.height, 0.1, 2000);
     camera.position.set(0, 0.6, 3.4);
 
     const controls = new OrbitControls(camera, canvas);
@@ -796,11 +848,13 @@
     });
 
     function onResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      applyLandscapeLayout();
+      camera.aspect = viewport.width / viewport.height;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(viewport.width, viewport.height);
     }
     window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', () => setTimeout(onResize, 300));
 
     const clock = new THREE.Clock();
     const distEl = document.getElementById('dist');
