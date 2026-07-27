@@ -46,6 +46,7 @@
     display: block;
     width: 100%;
     height: 100%;
+    touch-action: none;
   }
 
   #loader {
@@ -90,10 +91,14 @@
   }
 
   #info-panel {
-    top: 24px;
-    left: 24px;
-    padding: 18px 22px;
-    width: min(360px, calc(100% - 228px));
+    top: clamp(10px, 3vh, 24px);
+    left: clamp(10px, 3vw, 24px);
+    padding: clamp(10px, 2.4vh, 16px) clamp(12px, 2.8vw, 18px);
+    width: clamp(210px, 38%, 330px);
+    max-width: calc(100% - 220px);
+    max-height: calc(100% - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s ease;
   }
   #info-panel.hidden {
@@ -119,7 +124,7 @@
   .info-head h1 {
     min-width: 0;
     flex: 1;
-    font-size: 20px;
+    font-size: clamp(15px, 2.6vw, 20px);
     font-weight: 600;
     letter-spacing: 0.5px;
     display: flex;
@@ -139,8 +144,8 @@
   #info-panel[data-current="starlink"] .dot { background: var(--starlink); color: var(--starlink); box-shadow: 0 0 12px var(--starlink); }
   #info-panel[data-current="beidou"] .dot { background: var(--beidou); color: var(--beidou); box-shadow: 0 0 12px var(--beidou); }
   .collapse-btn {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border: 1px solid rgba(120, 170, 255, 0.24);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
@@ -156,20 +161,20 @@
     border-color: rgba(78, 161, 255, 0.42);
   }
   .info-body {
-    margin-top: 6px;
+    margin-top: 5px;
     color: var(--text-dim);
-    font-size: 12.5px;
-    line-height: 1.6;
+    font-size: clamp(11px, 1.8vw, 12.5px);
+    line-height: 1.5;
   }
   .info-meta {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 13px;
+    gap: 6px;
+    margin-top: 10px;
   }
   .info-meta div {
     min-width: 0;
-    padding: 8px;
+    padding: 6px 7px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -191,11 +196,11 @@
   .info-tabs {
     display: flex;
     gap: 7px;
-    margin-top: 14px;
+    margin-top: 10px;
   }
   .info-tab {
     flex: 1;
-    min-height: 30px;
+    min-height: 28px;
     border: 1px solid rgba(120, 170, 255, 0.18);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
@@ -210,36 +215,26 @@
     border-color: rgba(78, 161, 255, 0.4);
   }
 
-  #hint-panel {
-    bottom: 24px;
-    left: 24px;
-    padding: 14px 18px;
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.9;
-  }
-  #hint-panel .row { display: flex; gap: 10px; align-items: center; }
-  #hint-panel kbd {
-    display: inline-block;
-    min-width: 18px;
-    padding: 1px 7px;
-    font-family: inherit;
-    font-size: 11px;
-    color: var(--text);
-    background: rgba(78, 161, 255, 0.12);
-    border: 1px solid rgba(78, 161, 255, 0.3);
-    border-radius: 5px;
-    text-align: center;
-  }
-
   #toggle-panel {
-    top: 24px;
-    right: 24px;
-    padding: 12px;
+    top: clamp(10px, 3vh, 24px);
+    right: clamp(10px, 3vw, 24px);
+    bottom: clamp(10px, 3vh, 24px);
+    padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     width: 178px;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-width: thin;
+  }
+  #toggle-panel::-webkit-scrollbar { width: 4px; }
+  #toggle-panel::-webkit-scrollbar-thumb {
+    background: rgba(120, 170, 255, 0.38);
+    border-radius: 4px;
   }
   .panel-title {
     padding: 3px 6px 5px;
@@ -332,12 +327,16 @@
   #stat .accent { color: var(--accent); }
 
   @media (max-width: 640px) {
-    #info-panel { width: calc(100% - 184px); padding: 14px 16px; }
-    .info-head h1 { font-size: 17px; }
-    .info-meta { grid-template-columns: 1fr; }
-    .info-tabs { flex-direction: column; }
-    #hint-panel { font-size: 11px; padding: 12px 14px; }
-    #toggle-panel { width: 154px; padding: 8px; }
+    #info-panel {
+      width: min(280px, calc(100% - 174px));
+      min-width: 190px;
+      padding: 10px 12px;
+    }
+    .info-head { gap: 8px; }
+    .info-head h1 { font-size: 15px; }
+    .info-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .info-tabs { gap: 5px; }
+    #toggle-panel { width: 146px; padding: 8px; gap: 6px; }
     .toggle-btn { font-size: 11.5px; padding: 8px 10px; }
     #stat { display: none; }
   }
@@ -370,12 +369,6 @@
       <button class="info-tab" type="button" data-info="starlink">Starlink</button>
       <button class="info-tab" type="button" data-info="beidou">北斗</button>
     </div>
-  </div>
-
-  <div id="hint-panel" class="panel">
-    <div class="row"><kbd>左键拖动</kbd> 旋转视角</div>
-    <div class="row"><kbd>滚轮</kbd> 缩放</div>
-    <div class="row"><kbd>右键拖动</kbd> 平移</div>
   </div>
 
   <div id="toggle-panel" class="panel">
@@ -470,8 +463,13 @@
     controls.rotateSpeed = 0.6;
     controls.zoomSpeed = 0.8;
     controls.panSpeed = 0.6;
+    controls.enablePan = true;
     controls.minDistance = 1.6;
     controls.maxDistance = 8;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
 
     const sun = new THREE.DirectionalLight(0xfff8ee, 4.0);
     sun.position.set(5, 1.5, 3);
