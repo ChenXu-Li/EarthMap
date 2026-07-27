@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地球 · Earth 3D 交互展示</title>
+<style>
+  :root {
+    --bg: #05060a;
+    --panel: rgba(13, 18, 30, 0.55);
+    --panel-border: rgba(120, 170, 255, 0.18);
+    --text: #eaf0ff;
+    --text-dim: #8fa2c8;
+    --accent: #4ea1ff;
+    --accent-soft: rgba(78, 161, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #scene {
+    position: fixed;
+    inset: 0;
+    display: block;
+  }
+
+  /* ---------- 加载层 ---------- */
+  #loader {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    background: radial-gradient(circle at 50% 40%, #0b1426 0%, var(--bg) 70%);
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+  }
+  #loader.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+
+  .spinner {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 3px solid rgba(78, 161, 255, 0.2);
+    border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loader p {
+    color: var(--text-dim);
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+
+  /* ---------- 信息面板 ---------- */
+  .panel {
+    position: fixed;
+    z-index: 20;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  #title-panel {
+    top: 24px;
+    left: 24px;
+    padding: 18px 22px;
+    max-width: 320px;
+  }
+  #title-panel h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #title-panel h1 .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+  #title-panel .sub {
+    margin-top: 6px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+
+  /* ---------- 控制说明 ---------- */
+  #hint-panel {
+    bottom: 24px;
+    left: 24px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.9;
+  }
+  #hint-panel .row { display: flex; gap: 10px; align-items: center; }
+  #hint-panel kbd {
+    display: inline-block;
+    min-width: 18px;
+    padding: 1px 7px;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--text);
+    background: rgba(78, 161, 255, 0.12);
+    border: 1px solid rgba(78, 161, 255, 0.3);
+    border-radius: 5px;
+    text-align: center;
+  }
+
+  /* ---------- 开关按钮 ---------- */
+  #toggle-panel {
+    top: 24px;
+    right: 24px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 150px;
+  }
+  .toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  .toggle-btn:hover {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+  .toggle-btn.on {
+    background: var(--accent-soft);
+    border-color: rgba(78, 161, 255, 0.4);
+    color: var(--text);
+  }
+  .toggle-btn .switch {
+    width: 26px; height: 14px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.12);
+    position: relative;
+    transition: background 0.2s ease;
+  }
+  .toggle-btn .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #cdd6ee;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .toggle-btn.on .switch { background: var(--accent); }
+  .toggle-btn.on .switch::after { transform: translateX(12px); background: #fff; }
+
+  /* ---------- 右下提示 ---------- */
+  #stat {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 20;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    text-align: right;
+    line-height: 1.7;
+  }
+  #stat .accent { color: var(--accent); }
+
+  /* 小屏适配 */
+  @media (max-width: 640px) {
+    #title-panel { max-width: 220px; padding: 14px 16px; }
+    #title-panel h1 { font-size: 18px; }
+    #hint-panel { font-size: 11px; padding: 12px 14px; }
+    #toggle-panel { width: 130px; padding: 8px; }
+    .toggle-btn { font-size: 11.5px; padding: 8px 10px; }
+    #stat { display: none; }
+  }
+</style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <!-- 加载层 -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <p>正在加载三维地球</p>
+  </div>
+
+  <!-- 标题面板 -->
+  <div id="title-panel" class="panel">
+    <h1><span class="dot"></span>地球 · Earth</h1>
+    <div class="sub">三维交互地球模型，可自由旋转、缩放与平移，观察昼夜分界与大气辉光。</div>
+  </div>
+
+  <!-- 控制说明 -->
+  <div id="hint-panel" class="panel">
+    <div class="row"><kbd>左键拖动</kbd> 旋转视角</div>
+    <div class="row"><kbd>滚轮</kbd> 缩放</div>
+    <div class="row"><kbd>右键拖动</kbd> 平移</div>
+  </div>
+
+  <!-- 开关面板 -->
+  <div id="toggle-panel" class="panel">
+    <button class="toggle-btn on" data-toggle="autoRotate"><span>自动自转</span><span class="switch"></span></button>
+    <button class="toggle-btn on" data-toggle="clouds"><span>云层</span><span class="switch"></span></button>
+    <button class="toggle-btn on" data-toggle="atmosphere"><span>大气辉光</span><span class="switch"></span></button>
+    <button class="toggle-btn on" data-toggle="stars"><span>星空</span><span class="switch"></span></button>
+  </div>
+
+  <!-- 右下状态 -->
+  <div id="stat">
+    <div>视距 <span id="dist" class="accent">—</span></div>
+    <div>实时渲染 · WebGL</div>
+  </div>
+
+  <!-- Three.js importmap -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ---------- 基础场景 ----------
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: false
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.6;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05060a);
+
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      2000
+    );
+    camera.position.set(0, 0.6, 3.4);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 0.8;
+    controls.panSpeed = 0.6;
+    controls.minDistance = 1.6;
+    controls.maxDistance = 8;
+
+    // ---------- 光照 ----------
+    // 太阳光（主光源）
+    const sun = new THREE.DirectionalLight(0xfff8ee, 4.0);
+    sun.position.set(5, 1.5, 3);
+    scene.add(sun);
+
+    // 半球光：天空偏蓝、地面偏暖，大幅提升夜面亮度
+    const hemi = new THREE.HemisphereLight(0x88aadd, 0x553322, 1.1);
+    scene.add(hemi);
+
+    // 环境光：整体提亮
+    const ambient = new THREE.AmbientLight(0x556688, 1.0);
+    scene.add(ambient);
+
+    // 冷色补光（保持阴影层次）
+    const rim = new THREE.DirectionalLight(0x5588bb, 0.4);
+    rim.position.set(-4, -1, -2);
+    scene.add(rim);
+
+    // ---------- 加载纹理 ----------
+    const baseURL = './assets/';
+    // 使用 LoadingManager 统一管理，加载完成后隐藏加载层
+    const manager = new THREE.LoadingManager();
+    manager.onLoad = () => {
+      document.getElementById('loader').classList.add('hide');
+    };
+    // 兜底：若个别资源加载缓慢，8 秒后也移除加载层
+    manager.onError = (url) => { console.warn('纹理加载失败:', url); };
+    setTimeout(() => {
+      document.getElementById('loader').classList.add('hide');
+    }, 8000);
+
+    const loader = new THREE.TextureLoader(manager);
+    function load(name) {
+      return loader.load(baseURL + name);
+    }
+
+    const dayMap = load('earth_day.jpg');
+    const normalMap = load('earth_normal.jpg');
+    const specularMap = load('earth_specular.jpg');
+    const cloudsMap = load('earth_clouds.png');
+
+    dayMap.colorSpace = THREE.SRGBColorSpace;
+
+    // ---------- 地球本体 ----------
+    const EARTH_RADIUS = 1;
+    const earthGeo = new THREE.SphereGeometry(EARTH_RADIUS, 96, 96);
+    const earthMat = new THREE.MeshPhongMaterial({
+      map: dayMap,
+      normalMap: normalMap,
+      specularMap: specularMap,
+      specular: new THREE.Color(0x3a5a80),
+      shininess: 22,
+      normalScale: new THREE.Vector2(0.85, 0.85),
+      emissiveMap: dayMap,
+      emissive: new THREE.Color(0x112233),
+      emissiveIntensity: 0.45
+    });
+    const earth = new THREE.Mesh(earthGeo, earthMat);
+    scene.add(earth);
+
+    // ---------- 云层 ----------
+    const CLOUD_RADIUS = EARTH_RADIUS * 1.012;
+    const cloudsGeo = new THREE.SphereGeometry(CLOUD_RADIUS, 64, 64);
+    const cloudsMat = new THREE.MeshPhongMaterial({
+      map: cloudsMap,
+      transparent: true,
+      opacity: 0.65,
+      depthWrite: false,
+      blending: THREE.NormalBlending
+    });
+    const clouds = new THREE.Mesh(cloudsGeo, cloudsMat);
+    scene.add(clouds);
+
+    // ---------- 大气辉光（Fresnel）----------
+    const atmosphereGeo = new THREE.SphereGeometry(EARTH_RADIUS * 1.18, 64, 64);
+    const atmosphereMat = new THREE.ShaderMaterial({
+      uniforms: {
+        glowColor: { value: new THREE.Color(0x4ea1ff) },
+        coefficient: { value: 0.62 },
+        power: { value: 2.6 }
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vViewPos;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+          vViewPos = -mvPos.xyz;
+          gl_Position = projectionMatrix * mvPos;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        varying vec3 vViewPos;
+        uniform vec3 glowColor;
+        uniform float coefficient;
+        uniform float power;
+        void main() {
+          vec3 viewDir = normalize(vViewPos);
+          float rim = pow(coefficient - dot(vNormal, viewDir), power);
+          rim = clamp(rim, 0.0, 1.0);
+          gl_FragColor = vec4(glowColor, rim);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true,
+      depthWrite: false
+    });
+    const atmosphere = new THREE.Mesh(atmosphereGeo, atmosphereMat);
+    scene.add(atmosphere);
+
+    // ---------- 星空背景 ----------
+    function makeStars(count = 4000) {
+      const geo = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      const sizes = new Float32Array(count);
+      const color = new THREE.Color();
+      for (let i = 0; i < count; i++) {
+        // 在球壳内随机分布
+        const r = 80 + Math.random() * 320;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+        // 颜色微调：偏白，少量蓝/黄
+        const t = Math.random();
+        if (t < 0.78) color.setHSL(0.6, 0.05, 0.85 + Math.random() * 0.15);
+        else if (t < 0.9) color.setHSL(0.6, 0.4, 0.7);
+        else color.setHSL(0.1, 0.5, 0.75);
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+        sizes[i] = Math.random() * 1.6 + 0.4;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+      const mat = new THREE.PointsMaterial({
+        size: 1.4,
+        sizeAttenuation: true,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false
+      });
+      return new THREE.Points(geo, mat);
+    }
+    const stars = makeStars(4500);
+    scene.add(stars);
+
+    // ---------- 交互状态 ----------
+    const state = {
+      autoRotate: true,
+      clouds: true,
+      atmosphere: true,
+      stars: true
+    };
+
+    // 用户拖动时暂停自转，松开后恢复
+    let userInteracting = false;
+    controls.addEventListener('start', () => { userInteracting = true; });
+    controls.addEventListener('end', () => { userInteracting = false; });
+
+    // ---------- 开关按钮 ----------
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.toggle;
+        state[key] = !state[key];
+        btn.classList.toggle('on', state[key]);
+        if (key === 'clouds') clouds.visible = state[key];
+        if (key === 'atmosphere') atmosphere.visible = state[key];
+        if (key === 'stars') stars.visible = state[key];
+      });
+    });
+
+    // ---------- 尺寸自适应 ----------
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', onResize);
+
+    // ---------- 渲染循环 ----------
+    const clock = new THREE.Clock();
+    const distEl = document.getElementById('dist');
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+
+      // 自转：仅在未交互且开关开启时
+      if (state.autoRotate && !userInteracting) {
+        earth.rotation.y += dt * 0.06;
+      }
+      // 云层略快
+      if (state.clouds) {
+        clouds.rotation.y += dt * 0.075;
+      }
+      // 星空极慢漂移
+      stars.rotation.y += dt * 0.003;
+
+      controls.update();
+
+      // 更新视距显示
+      distEl.textContent = camera.position.length().toFixed(2);
+
+      renderer.render(scene, camera);
+    }
+
+    // ---------- 启动 ----------
+    animate();
+  </script>
+</body>
+</html>
