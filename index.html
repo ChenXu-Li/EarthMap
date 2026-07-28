@@ -40,7 +40,6 @@
     width: 100vw;
     height: 100dvh;
     overflow: hidden;
-        satelliteCount: 35,
     background: var(--bg);
   }
 
@@ -49,20 +48,6 @@
     inset: 0;
     display: block;
     width: 100%;
-      gps: {
-        name: 'GPS',
-        description: 'GPS 是美国建设的中轨导航星座，典型星座由多条倾斜轨道组成，为地面、航空和海上设备提供连续定位与授时。',
-        altitudeLabel: '约 20,200 km',
-        inclinationLabel: '55°',
-        color: 0x5ec8ff,
-        satelliteCount: 31,
-        radius: 1.72,
-        planes: 6,
-        perPlane: 4,
-        inclination: 55,
-        speed: 0.18,
-        phase: 0.2
-      },
     height: 100%;
     touch-action: none;
   }
@@ -250,12 +235,9 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    /* allow pointer-based dragging instead of relying on the native scrollbar */
     touch-action: none;
-    /* hide native scrollbars so users drag to scroll instead */
     scrollbar-width: none;
   }
-  /* hide webkit scrollbars */
   #toggle-panel::-webkit-scrollbar { display: none; }
   .panel-title {
     padding: 3px 6px 5px;
@@ -511,6 +493,23 @@
       sensitivity: 0.0045
     };
 
+    function getLogicalPointerDelta(dx, dy) {
+      if (typeof DOMMatrixReadOnly === 'undefined' || typeof DOMPoint === 'undefined') {
+        return { dx, dy };
+      }
+      const transform = window.getComputedStyle(app).transform;
+      if (!transform || transform === 'none') {
+        return { dx, dy };
+      }
+      try {
+        const inverse = new DOMMatrixReadOnly(transform).inverse();
+        const point = inverse.transformPoint(new DOMPoint(dx, dy, 0, 0));
+        return { dx: point.x, dy: point.y };
+      } catch (error) {
+        return { dx, dy };
+      }
+    }
+
     function handleDragRotation(dx, dy) {
       if (dx === 0 && dy === 0) return;
       const yaw = dx * rotationControl.sensitivity;
@@ -547,7 +546,8 @@
       if (!rotationControl.active || event.pointerId !== rotationControl.pointerId) return;
       const dx = event.clientX - rotationControl.lastX;
       const dy = event.clientY - rotationControl.lastY;
-      handleDragRotation(dx, dy);
+      const delta = getLogicalPointerDelta(dx, dy);
+      handleDragRotation(delta.dx, delta.dy);
       rotationControl.lastX = event.clientX;
       rotationControl.lastY = event.clientY;
     });
@@ -993,25 +993,28 @@
       const togglePanel = document.getElementById('toggle-panel');
       if (!togglePanel) return;
 
-      let drag = { active: false, pointerId: null, startY: 0, startScroll: 0 };
+      let drag = { active: false, pointerId: null, lastX: 0, lastY: 0, startScroll: 0 };
 
       togglePanel.addEventListener('pointerdown', (e) => {
-        // only start for primary button/touch and avoid when interacting with inner controls
         if (e.button !== 0) return;
         if (e.target.closest('button, a, input, select, textarea')) return;
         drag.active = true;
         drag.pointerId = e.pointerId;
-        drag.startY = e.clientY;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
         drag.startScroll = togglePanel.scrollTop;
         togglePanel.setPointerCapture(e.pointerId);
-        // prevent text selection during drag
         togglePanel.style.userSelect = 'none';
       });
 
       togglePanel.addEventListener('pointermove', (e) => {
         if (!drag.active || e.pointerId !== drag.pointerId) return;
-        const dy = e.clientY - drag.startY;
-        togglePanel.scrollTop = drag.startScroll - dy;
+        const dx = e.clientX - drag.lastX;
+        const dy = e.clientY - drag.lastY;
+        const delta = getLogicalPointerDelta(dx, dy);
+        togglePanel.scrollTop = drag.startScroll - delta.dy;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
       });
 
       function endDrag(e) {
