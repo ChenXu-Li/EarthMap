@@ -94,8 +94,8 @@
   }
 
   #info-panel {
-    top: clamp(10px, 3vh, 24px);
-    left: clamp(10px, 3vw, 24px);
+    top: calc(clamp(10px, 3vh, 24px) + 56px);
+    left: clamp(10px, 3vw, 20px);
     padding: clamp(10px, 2.4vh, 16px) clamp(12px, 2.8vw, 18px);
     width: clamp(210px, 38%, 330px);
     max-width: calc(100% - 220px);
@@ -236,6 +236,8 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     touch-action: none;
+    pointer-events: auto;
+    z-index: 30;
     scrollbar-width: none;
   }
   #toggle-panel::-webkit-scrollbar { display: none; }
@@ -346,10 +348,31 @@
     .toggle-btn { font-size: 11.5px; padding: 8px 10px; }
     #stat { display: none; }
   }
+
+  /* Shared back button (keeps consistent style across maps) */
+  .back-btn{
+    display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;
+    background:rgba(0,0,0,0.48);color:var(--text);text-decoration:none;font-weight:600;
+    font-size:14px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 6px 18px rgba(0,0,0,0.45);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:40;cursor:pointer;
+  }
+  .back-btn:active{transform:translateY(1px)}
+  .back-btn--fixed{position:fixed;left:clamp(10px,3vw,20px);top:calc(env(safe-area-inset-top,12px) + 12px)}
+  .back-btn--header{position:relative;margin-right:8px}
+  @media (max-width:640px){
+    .back-btn{padding:8px 10px;font-size:13px;border-radius:10px}
+    .back-btn--fixed{left:10px;top:calc(env(safe-area-inset-top,8px) + 8px)}
+  }
+
+  /* Prevent overlap: on larger screens push info panel right when back button is present */
+  @media (min-width:880px) {
+    #info-panel { left: clamp(10px, 3vw, 20px); }
+  }
 </style>
 </head>
 <body>
 <div id="app">
+  <a id="back-btn" class="back-btn back-btn--fixed" href="../MapPortal/index.html" aria-label="返回入口" onclick="handleBack(event)">← 返回</a>
   <canvas id="scene"></canvas>
 
   <div id="loader">
@@ -1004,6 +1027,7 @@
 
       togglePanel.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
+        if (e.target.closest('button, a, input, select, textarea, label')) return;
         drag.active = true;
         drag.pointerId = e.pointerId;
         drag.lastX = e.clientX;
@@ -1075,6 +1099,31 @@
     }
 
     animate();
+  </script>
+
+  <script>
+    // 返回处理：优先使用 history.back()（若有 referrer），若未返回则降级到入口页
+    window.handleBack = function (e) {
+      e = e || window.event;
+      if (e && e.preventDefault) e.preventDefault();
+      const fallback = '../MapPortal/index.html';
+      try {
+        if (document.referrer) {
+          history.back();
+          // 若 history.back 无效（例如没有上一页），5 百毫秒后跳转到入口页
+          setTimeout(() => { location.href = fallback; }, 500);
+          return;
+        }
+        if (history.length > 1) {
+          history.back();
+          setTimeout(() => { location.href = fallback; }, 500);
+          return;
+        }
+      } catch (err) {
+        // ignore and fallback
+      }
+      location.href = fallback;
+    };
   </script>
 </body>
 </html>
