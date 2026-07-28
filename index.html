@@ -250,14 +250,13 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    scrollbar-width: thin;
+    /* allow pointer-based dragging instead of relying on the native scrollbar */
+    touch-action: none;
+    /* hide native scrollbars so users drag to scroll instead */
+    scrollbar-width: none;
   }
-  #toggle-panel::-webkit-scrollbar { width: 4px; }
-  #toggle-panel::-webkit-scrollbar-thumb {
-    background: rgba(120, 170, 255, 0.38);
-    border-radius: 4px;
-  }
+  /* hide webkit scrollbars */
+  #toggle-panel::-webkit-scrollbar { display: none; }
   .panel-title {
     padding: 3px 6px 5px;
     color: var(--text-dim);
@@ -987,6 +986,46 @@
       infoCollapse.textContent = infoCollapsed ? '+' : '−';
       infoCollapse.setAttribute('aria-label', infoCollapsed ? '展开信息卡' : '收起信息卡');
     });
+
+    // Enable drag-to-scroll for the right toggle panel (so users can drag anywhere
+    // on the panel to scroll, instead of using the scrollbar).
+    (function enablePanelDragScroll() {
+      const togglePanel = document.getElementById('toggle-panel');
+      if (!togglePanel) return;
+
+      let drag = { active: false, pointerId: null, startY: 0, startScroll: 0 };
+
+      togglePanel.addEventListener('pointerdown', (e) => {
+        // only start for primary button/touch and avoid when interacting with inner controls
+        if (e.button !== 0) return;
+        if (e.target.closest('button, a, input, select, textarea')) return;
+        drag.active = true;
+        drag.pointerId = e.pointerId;
+        drag.startY = e.clientY;
+        drag.startScroll = togglePanel.scrollTop;
+        togglePanel.setPointerCapture(e.pointerId);
+        // prevent text selection during drag
+        togglePanel.style.userSelect = 'none';
+      });
+
+      togglePanel.addEventListener('pointermove', (e) => {
+        if (!drag.active || e.pointerId !== drag.pointerId) return;
+        const dy = e.clientY - drag.startY;
+        togglePanel.scrollTop = drag.startScroll - dy;
+      });
+
+      function endDrag(e) {
+        if (!drag.active || e.pointerId !== drag.pointerId) return;
+        drag.active = false;
+        try { togglePanel.releasePointerCapture(e.pointerId); } catch (err) {}
+        drag.pointerId = null;
+        togglePanel.style.userSelect = '';
+      }
+
+      togglePanel.addEventListener('pointerup', endDrag);
+      togglePanel.addEventListener('pointercancel', endDrag);
+      togglePanel.addEventListener('pointerleave', endDrag);
+    })();
 
     function onResize() {
       applyLandscapeLayout();
