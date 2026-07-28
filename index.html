@@ -993,28 +993,39 @@
       const togglePanel = document.getElementById('toggle-panel');
       if (!togglePanel) return;
 
-      let drag = { active: false, pointerId: null, lastX: 0, lastY: 0, startScroll: 0 };
+      let drag = {
+        active: false,
+        pointerId: null,
+        lastX: 0,
+        lastY: 0,
+        dragging: false,
+        moved: false
+      };
 
       togglePanel.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-        if (e.target.closest('button, a, input, select, textarea')) return;
         drag.active = true;
         drag.pointerId = e.pointerId;
         drag.lastX = e.clientX;
         drag.lastY = e.clientY;
-        drag.startScroll = togglePanel.scrollTop;
+        drag.dragging = false;
+        drag.moved = false;
         togglePanel.setPointerCapture(e.pointerId);
-        togglePanel.style.userSelect = 'none';
       });
 
       togglePanel.addEventListener('pointermove', (e) => {
         if (!drag.active || e.pointerId !== drag.pointerId) return;
         const dx = e.clientX - drag.lastX;
         const dy = e.clientY - drag.lastY;
+        const distance = Math.abs(dx) + Math.abs(dy);
+        if (!drag.dragging && distance < 6) return;
         const delta = getLogicalPointerDelta(dx, dy);
-        togglePanel.scrollTop = drag.startScroll - delta.dy;
+        togglePanel.scrollTop -= delta.dy;
         drag.lastX = e.clientX;
         drag.lastY = e.clientY;
+        drag.dragging = true;
+        drag.moved = true;
+        togglePanel.style.userSelect = 'none';
       });
 
       function endDrag(e) {
@@ -1022,6 +1033,7 @@
         drag.active = false;
         try { togglePanel.releasePointerCapture(e.pointerId); } catch (err) {}
         drag.pointerId = null;
+        drag.dragging = false;
         togglePanel.style.userSelect = '';
       }
 
